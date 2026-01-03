@@ -1,0 +1,2499 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>TripMate - Driver Assistant</title>
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        sans-serif;
+      background: #121212;
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(18, 18, 18, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 15px;
+      z-index: 1000;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #4caf50;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .icon-btn.active {
+      background: #4caf50;
+    }
+
+    .bottom-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1e1e1e;
+      border-radius: 24px 24px 0 0;
+      z-index: 1001;
+      transform: translateY(calc(100% - 120px));
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 85vh;
+      overflow: hidden;
+    }
+
+    .bottom-sheet.expanded {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+      margin: 12px auto;
+      cursor: pointer;
+    }
+
+    .sheet-content {
+      padding: 0 20px 20px;
+      overflow-y: auto;
+      max-height: calc(85vh - 120px);
+    }
+
+    .sheet-preview {
+      padding: 0 20px 20px;
+    }
+
+    .trip-summary-card {
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      border-radius: 16px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .summary-label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .summary-value {
+      color: #4caf50;
+      font-weight: 600;
+    }
+
+    .summary-value.highlight {
+      font-size: 20px;
+      color: #fff;
+    }
+
+    .input-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .location-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px;
+      color: #fff;
+      font-size: 16px;
+      width: 100%;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .location-input input {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      flex: 1;
+      outline: none;
+    }
+
+    .location-input input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .location-icon {
+      color: #4caf50;
+      font-size: 18px;
+    }
+
+    .waypoint-item {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 12px 15px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .waypoint-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .waypoint-text {
+      flex: 1;
+      font-size: 15px;
+    }
+
+    .delete-btn {
+      color: #f44336;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    .btn-primary {
+      background: #4caf50;
+      color: #fff;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn-secondary:active {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .vehicle-card {
+      background: rgba(33, 150, 243, 0.1);
+      border: 1px solid rgba(33, 150, 243, 0.3);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .vehicle-info h4 {
+      color: #fff;
+      margin-bottom: 6px;
+      font-size: 16px;
+    }
+
+    .vehicle-details {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .vehicle-select-btn {
+      background: #2196f3;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1e1e1e;
+      border-radius: 20px;
+      padding: 25px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .close-btn {
+      font-size: 28px;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 8px;
+    }
+
+    .form-input,
+    .form-select {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 12px;
+      color: #fff;
+      font-size: 15px;
+      width: 100%;
+      outline: none;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      border-color: #4caf50;
+    }
+
+    .route-option {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .route-option.selected {
+      border-color: #4caf50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    .route-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .route-name {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .route-distance {
+      color: #4caf50;
+      font-weight: 600;
+    }
+
+    .route-details {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .toll-badge {
+      display: inline-block;
+      background: rgba(255, 152, 0, 0.2);
+      color: #ff9800;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .toll-free-badge {
+      display: inline-block;
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 140px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #4caf50;
+      color: #fff;
+      border: none;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+      cursor: pointer;
+      z-index: 999;
+    }
+
+    .fab:active {
+      transform: scale(0.95);
+    }
+
+    .loading {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(18, 18, 18, 0.95);
+      padding: 20px 30px;
+      border-radius: 12px;
+      z-index: 3000;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #4caf50;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .expense-card {
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .expense-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .expense-row:last-child {
+      border-bottom: none;
+      font-weight: 600;
+      font-size: 18px;
+      color: #ff9800;
+    }
+
+    .toll-list-card {
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .toll-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toll-item:last-child {
+      border-bottom: none;
+    }
+
+    .toll-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .toll-location {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .toll-price {
+      color: #ff9800;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .route-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .comparison-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .comparison-card.selected {
+      border-color: #4caf50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    .comparison-card.toll-free {
+      border-color: rgba(76, 175, 80, 0.3);
+    }
+
+    .comparison-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 8px;
+    }
+
+    .comparison-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .comparison-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+  </style>
+  <body>
+    <div class="top-bar">
+      <div class="logo">🚕 TripMate</div>
+      <div class="top-actions">
+        <button class="icon-btn" onclick="centerMap()" title="Center">
+          <i class="fas fa-location-crosshairs"></i>
+        </button>
+        <button class="icon-btn" onclick="openVehicleModal()" title="Vehicles">
+          <i class="fas fa-car"></i>
+        </button>
+        <button class="icon-btn" onclick="openTripsModal()" title="Saved Trips">
+          <i class="fas fa-bookmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <button class="fab" onclick="toggleSheet()">
+      <i class="fas fa-route"></i>
+    </button>
+
+    <div class="bottom-sheet" id="bottomSheet">
+      <div class="sheet-handle" onclick="toggleSheet()"></div>
+
+      <div class="sheet-preview" id="sheetPreview">
+        <div class="trip-summary-card">
+          <div class="summary-row">
+            <span class="summary-label">Distance</span>
+            <span class="summary-value" id="previewDistance">--</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Tolls</span>
+            <span class="summary-value" id="previewTolls">--</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Total Cost</span>
+            <span class="summary-value highlight" id="previewCost">₹--</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sheet-content" id="sheetContent" style="display: none">
+        <!-- Status Banner -->
+        <div
+          id="statusBanner"
+          style="
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+          "
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin-bottom: 5px;
+            "
+          >
+            <i class="fas fa-info-circle" style="color: #2196f3"></i>
+            <strong>Auto Data Detection</strong>
+          </div>
+          <div
+            id="statusText"
+            style="color: rgba(255, 255, 255, 0.7); line-height: 1.4"
+          >
+            📍 Detecting your location...
+          </div>
+        </div>
+
+        <div class="input-section">
+          <div class="section-title">
+            <i class="fas fa-map-marker-alt"></i> ROUTE PLANNING
+          </div>
+
+          <div class="location-input">
+            <i class="fas fa-circle location-icon" style="color: #4caf50"></i>
+            <input
+              type="text"
+              id="origin"
+              placeholder="e.g., Delhi, Connaught Place"
+            />
+          </div>
+
+          <div id="waypointsList"></div>
+
+          <div class="location-input">
+            <i
+              class="fas fa-location-dot location-icon"
+              style="color: #f44336"
+            ></i>
+            <input
+              type="text"
+              id="destination"
+              placeholder="e.g., Jaipur, Pink City"
+            />
+          </div>
+
+          <div style="margin-top: 10px">
+            <button
+              class="btn-secondary"
+              onclick="tryDemoRoute()"
+              style="font-size: 13px; padding: 10px"
+            >
+              <i class="fas fa-lightbulb"></i> Try: Delhi → Jaipur
+            </button>
+          </div>
+
+          <button class="btn-secondary" onclick="addWaypoint()">
+            <i class="fas fa-plus"></i> Add Stop
+          </button>
+        </div>
+
+        <div class="input-section">
+          <div class="section-title">
+            <i class="fas fa-car"></i> SELECTED VEHICLE
+          </div>
+          <div id="selectedVehicle">
+            <p
+              style="
+                color: rgba(255, 255, 255, 0.5);
+                text-align: center;
+                padding: 20px;
+              "
+            >
+              No vehicle selected. Add a vehicle to calculate costs.
+            </p>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="calculateRoute()">
+          <i class="fas fa-calculator"></i> Calculate Trip
+        </button>
+
+        <div id="routeComparison" style="display: none"></div>
+        <div id="routeOptions" style="margin-top: 20px; display: none"></div>
+        <div id="tollList" style="display: none"></div>
+        <div id="expenseBreakdown" style="display: none"></div>
+      </div>
+    </div>
+
+    <!-- Vehicle Modal -->
+    <div class="modal" id="vehicleModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">My Vehicles</div>
+          <div class="close-btn" onclick="closeModal('vehicleModal')">
+            &times;
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Vehicle Name</label>
+          <input
+            type="text"
+            class="form-input"
+            id="vehicleName"
+            placeholder="e.g., My Swift"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Vehicle Type</label>
+          <select class="form-select" id="vehicleType">
+            <option value="car">Car/Jeep/Van</option>
+            <option value="lcv">LCV (Light Commercial Vehicle)</option>
+            <option value="bus">Bus/Truck (2-axle)</option>
+            <option value="truck">Heavy Vehicle (3-axle)</option>
+            <option value="heavy">Heavy Vehicle (4-6 axle)</option>
+            <option value="oversized">Oversized Vehicle (7+ axle)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Fuel Type</label>
+          <select class="form-select" id="fuelType">
+            <option value="petrol">Petrol</option>
+            <option value="diesel">Diesel</option>
+            <option value="cng">CNG</option>
+            <option value="electric">Electric</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mileage (km/l or km/kWh)</label>
+          <input
+            type="number"
+            class="form-input"
+            id="mileage"
+            placeholder="e.g., 18"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Fuel Price (₹/l or ₹/kWh)</label>
+          <div style="display: flex; gap: 8px">
+            <input
+              type="number"
+              class="form-input"
+              id="fuelPrice"
+              placeholder="e.g., 105"
+              style="flex: 1"
+            />
+            <button
+              class="vehicle-select-btn"
+              onclick="fetchCurrentFuelPrice()"
+              style="white-space: nowrap; padding: 12px 16px"
+            >
+              <i class="fas fa-sync"></i> Get Price
+            </button>
+          </div>
+          <div
+            id="fuelPriceStatus"
+            style="
+              font-size: 12px;
+              color: rgba(255, 255, 255, 0.5);
+              margin-top: 5px;
+            "
+          >
+            Auto-fetch current fuel price for your city
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="saveVehicle()">
+          <i class="fas fa-save"></i> Save Vehicle
+        </button>
+
+        <div id="vehicleList" style="margin-top: 25px"></div>
+      </div>
+    </div>
+
+    <!-- Trips Modal -->
+    <div class="modal" id="tripsModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">Saved Trips</div>
+          <div class="close-btn" onclick="closeModal('tripsModal')">
+            &times;
+          </div>
+        </div>
+        <div id="savedTripsList"></div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div id="loadingText" style="text-align: center; color: #fff">
+        Calculating route...
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script src="scripts.js"></script>
+    <script>
+      // ==================== TRIPMATE 2026 - COMPLETE TRIP PLANNING SYSTEM ====================
+      // Enhanced with accurate toll detection, EV stations, weather alerts, and real-time fuel prices
+
+      // ==================== GLOBAL VARIABLES ====================
+      let map;
+      let currentRoute = null;
+      let markers = [];
+      let tollMarkers = [];
+      let evMarkers = [];
+      let waypoints = [];
+      let vehicles = [];
+      let selectedVehicle = null;
+      let routeLayer = null;
+      let alternateRouteLayer = null;
+      let detectedTolls = [];
+      let currentRouteData = null;
+      let alternateRouteData = null;
+      let selectedRouteType = "fastest";
+      let isCalculating = false;
+      let lastCalculationTime = 0;
+
+      // 2026 Enhanced Configuration
+      const CONFIG = {
+        TOLL_THRESHOLD_KM: 0.1, // 100m accuracy for toll detection
+        EV_SEARCH_RADIUS: 5000, // 5km radius for EV stations
+        WEATHER_ENABLED: true,
+        ROUTE_ALTERNATIVES: true,
+        AUTO_FUEL_PRICE: true,
+      };
+
+      // In-memory storage
+      let inMemoryStorage = {
+        vehicles: [],
+        trips: [],
+        fuel_prices: null,
+        fuel_city: null,
+        fuel_date: null,
+        petrol_price: 105,
+        diesel_price: 95,
+        cng_price: 80,
+        electric_price: 8,
+      };
+
+      let appConfig = {
+        defaultCity: "Delhi",
+        detectedCity: null,
+        userLocation: null,
+      };
+
+      // ==================== ENHANCED TOLL DATABASE (2026 UPDATED PRICES) ====================
+      const TOLL_PLAZAS = [
+        // Delhi-Mumbai (NH48) - Updated 2026 Rates
+        {
+          name: "Kherki Daula",
+          lat: 28.4089,
+          lon: 76.8488,
+          highway: "NH48",
+          charges: {
+            car: 115,
+            lcv: 180,
+            bus: 380,
+            truck: 400,
+            heavy: 550,
+            oversized: 650,
+          },
+        },
+        {
+          name: "Manesar",
+          lat: 28.3521,
+          lon: 76.9398,
+          highway: "NH48",
+          charges: {
+            car: 100,
+            lcv: 160,
+            bus: 340,
+            truck: 355,
+            heavy: 485,
+            oversized: 580,
+          },
+        },
+        {
+          name: "Shahjahanpur",
+          lat: 28.1267,
+          lon: 77.0453,
+          highway: "NH48",
+          charges: {
+            car: 90,
+            lcv: 145,
+            bus: 300,
+            truck: 315,
+            heavy: 430,
+            oversized: 515,
+          },
+        },
+        {
+          name: "Bilaspur",
+          lat: 27.2185,
+          lon: 76.7568,
+          highway: "NH48",
+          charges: {
+            car: 120,
+            lcv: 190,
+            bus: 400,
+            truck: 420,
+            heavy: 570,
+            oversized: 685,
+          },
+        },
+        {
+          name: "Kishangarh",
+          lat: 26.5895,
+          lon: 74.8688,
+          highway: "NH48",
+          charges: {
+            car: 105,
+            lcv: 165,
+            bus: 345,
+            truck: 360,
+            heavy: 495,
+            oversized: 595,
+          },
+        },
+        {
+          name: "Beawar",
+          lat: 26.1012,
+          lon: 74.3197,
+          highway: "NH48",
+          charges: {
+            car: 85,
+            lcv: 135,
+            bus: 285,
+            truck: 300,
+            heavy: 410,
+            oversized: 490,
+          },
+        },
+
+        // Mumbai-Pune Expressway - 2026 Premium Rates
+        {
+          name: "Kalamboli",
+          lat: 19.0335,
+          lon: 73.1293,
+          highway: "Mumbai-Pune Exp",
+          charges: {
+            car: 320,
+            lcv: 490,
+            bus: 1020,
+            truck: 1070,
+            heavy: 1460,
+            oversized: 1750,
+          },
+        },
+        {
+          name: "Khalapur",
+          lat: 18.8431,
+          lon: 73.1847,
+          highway: "Mumbai-Pune Exp",
+          charges: {
+            car: 300,
+            lcv: 465,
+            bus: 970,
+            truck: 1020,
+            heavy: 1390,
+            oversized: 1670,
+          },
+        },
+
+        // Delhi-Agra (Yamuna Expressway)
+        {
+          name: "Pari Chowk",
+          lat: 28.4683,
+          lon: 77.5033,
+          highway: "Yamuna Exp",
+          charges: {
+            car: 220,
+            lcv: 345,
+            bus: 720,
+            truck: 755,
+            heavy: 1030,
+            oversized: 1235,
+          },
+        },
+        {
+          name: "Dankaur",
+          lat: 28.3542,
+          lon: 77.5589,
+          highway: "Yamuna Exp",
+          charges: {
+            car: 190,
+            lcv: 295,
+            bus: 620,
+            truck: 650,
+            heavy: 885,
+            oversized: 1065,
+          },
+        },
+
+        // Delhi-Jaipur
+        {
+          name: "Rajokri",
+          lat: 28.5321,
+          lon: 77.0812,
+          highway: "NH48",
+          charges: {
+            car: 80,
+            lcv: 125,
+            bus: 260,
+            truck: 275,
+            heavy: 375,
+            oversized: 450,
+          },
+        },
+        {
+          name: "Dharuhera",
+          lat: 28.2058,
+          lon: 76.7899,
+          highway: "NH48",
+          charges: {
+            car: 100,
+            lcv: 160,
+            bus: 335,
+            truck: 350,
+            heavy: 480,
+            oversized: 575,
+          },
+        },
+        {
+          name: "Kotputli",
+          lat: 27.7013,
+          lon: 76.2049,
+          highway: "NH48",
+          charges: {
+            car: 90,
+            lcv: 145,
+            bus: 300,
+            truck: 315,
+            heavy: 430,
+            oversized: 515,
+          },
+        },
+
+        // Delhi-Chandigarh (NH44)
+        {
+          name: "Kundli",
+          lat: 28.8813,
+          lon: 77.1253,
+          highway: "NH44",
+          charges: {
+            car: 95,
+            lcv: 150,
+            bus: 315,
+            truck: 330,
+            heavy: 450,
+            oversized: 540,
+          },
+        },
+        {
+          name: "Panipat",
+          lat: 29.3879,
+          lon: 76.9682,
+          highway: "NH44",
+          charges: {
+            car: 105,
+            lcv: 165,
+            bus: 345,
+            truck: 360,
+            heavy: 495,
+            oversized: 595,
+          },
+        },
+        {
+          name: "Karnal",
+          lat: 29.6857,
+          lon: 76.9905,
+          highway: "NH44",
+          charges: {
+            car: 90,
+            lcv: 140,
+            bus: 295,
+            truck: 310,
+            heavy: 425,
+            oversized: 510,
+          },
+        },
+
+        // Bangalore-Chennai (NH44)
+        {
+          name: "Attibele",
+          lat: 12.7954,
+          lon: 77.7703,
+          highway: "NH44",
+          charges: {
+            car: 80,
+            lcv: 125,
+            bus: 260,
+            truck: 275,
+            heavy: 375,
+            oversized: 450,
+          },
+        },
+        {
+          name: "Hosur",
+          lat: 12.7409,
+          lon: 77.8253,
+          highway: "NH44",
+          charges: {
+            car: 70,
+            lcv: 110,
+            bus: 230,
+            truck: 240,
+            heavy: 330,
+            oversized: 395,
+          },
+        },
+        {
+          name: "Krishnagiri",
+          lat: 12.5186,
+          lon: 78.2137,
+          highway: "NH44",
+          charges: {
+            car: 95,
+            lcv: 150,
+            bus: 315,
+            truck: 330,
+            heavy: 450,
+            oversized: 540,
+          },
+        },
+      ];
+
+      // ==================== INITIALIZATION ====================
+      function initMap() {
+        map = L.map("map", { zoomControl: false }).setView(
+          [20.5937, 78.9629],
+          5
+        );
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap",
+          maxZoom: 19,
+        }).addTo(map);
+
+        getUserLocation();
+        loadVehicles();
+      }
+
+      function getUserLocation() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const lat = position.coords.latitude;
+              const lon = position.coords.longitude;
+
+              appConfig.userLocation = { lat, lon };
+              map.setView([lat, lon], 13);
+
+              const userMarker = L.marker([lat, lon], {
+                icon: L.divIcon({
+                  className: "user-marker",
+                  html: '<div style="background: #2196F3; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+                }),
+              }).addTo(map);
+
+              userMarker.bindPopup("📍 Your Location").openPopup();
+
+              detectUserCity(lat, lon);
+            },
+            (error) => {
+              console.log("Geolocation disabled or unavailable");
+              updateStatusBanner();
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 5000,
+              maximumAge: 0,
+            }
+          );
+        }
+      }
+
+      // ==================== CITY & FUEL PRICE DETECTION ====================
+      async function detectUserCity(lat, lon) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+          const response = await fetch(url, {
+            headers: { "User-Agent": "TripMate-App/2.0" },
+          });
+
+          const data = await response.json();
+          const city =
+            data.address.city ||
+            data.address.town ||
+            data.address.village ||
+            data.address.state ||
+            "Delhi";
+
+          appConfig.detectedCity = city;
+          appConfig.defaultCity = city;
+          console.log("📍 Detected city:", city);
+
+          if (CONFIG.AUTO_FUEL_PRICE) {
+            await fetchFuelPrices(city);
+          }
+
+          updateStatusBanner();
+        } catch (error) {
+          console.error("City detection error:", error);
+          updateStatusBanner();
+        }
+      }
+
+      async function fetchFuelPrices(city) {
+        try {
+          const targetCity = city || appConfig.defaultCity;
+
+          const petrol = await scrapeFuelPrice(targetCity, "petrol");
+          const diesel = await scrapeFuelPrice(targetCity, "diesel");
+
+          inMemoryStorage.petrol_price = petrol;
+          inMemoryStorage.diesel_price = diesel;
+          inMemoryStorage.fuel_city = targetCity;
+          inMemoryStorage.fuel_date = new Date().toLocaleDateString("en-IN");
+
+          console.log(`💰 Fuel prices: Petrol ₹${petrol}, Diesel ₹${diesel}`);
+
+          return {
+            petrol,
+            diesel,
+            cng: inMemoryStorage.cng_price,
+            electric: inMemoryStorage.electric_price,
+            city: targetCity,
+            date: inMemoryStorage.fuel_date,
+          };
+        } catch (error) {
+          console.error("Fuel price fetch error:", error);
+          return null;
+        }
+      }
+
+      async function scrapeFuelPrice(city, fuelType) {
+        const pages = {
+          petrol: "https://www.goodreturns.in/petrol-price.html",
+          diesel: "https://www.goodreturns.in/diesel-price.html",
+        };
+
+        try {
+          const proxyUrl =
+            "https://api.allorigins.win/raw?url=" +
+            encodeURIComponent(pages[fuelType]);
+          const response = await fetch(proxyUrl);
+          const html = await response.text();
+
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const rows = doc.querySelectorAll("table tr");
+
+          for (let row of rows) {
+            const text = row.innerText.toLowerCase();
+            if (text.includes(city.toLowerCase())) {
+              const priceMatch = row.innerText.match(/(\d+\.?\d*)/g);
+              if (priceMatch && priceMatch.length > 0) {
+                const price = parseFloat(priceMatch[priceMatch.length - 1]);
+                return price;
+              }
+            }
+          }
+
+          return fuelType === "petrol" ? 105 : 95;
+        } catch (error) {
+          console.error(`Error fetching ${fuelType} price:`, error);
+          return fuelType === "petrol" ? 105 : 95;
+        }
+      }
+
+      // ==================== ROUTE CALCULATION (ENHANCED 2026) ====================
+      async function calculateRoute() {
+        if (isCalculating) {
+          alert("⏳ Please wait, calculation in progress...");
+          return;
+        }
+
+        const now = Date.now();
+        if (now - lastCalculationTime < 3000) {
+          alert("⏳ Please wait a few seconds before calculating again");
+          return;
+        }
+
+        const origin = document.getElementById("origin").value.trim();
+        const destination = document.getElementById("destination").value.trim();
+
+        if (!origin || !destination) {
+          alert("⚠️ Please enter both origin and destination");
+          return;
+        }
+
+        isCalculating = true;
+        lastCalculationTime = now;
+        showLoading(true, "Finding origin location...");
+
+        try {
+          const originCoords = await geocode(origin);
+
+          if (!originCoords) {
+            showLoading(false);
+            isCalculating = false;
+            alert("❌ Could not find origin: " + origin);
+            return;
+          }
+
+          showLoading(true, "Finding destination location...");
+          const destCoords = await geocode(destination);
+
+          if (!destCoords) {
+            showLoading(false);
+            isCalculating = false;
+            alert("❌ Could not find destination: " + destination);
+            return;
+          }
+
+          showLoading(true, "Calculating optimal route...");
+          currentRouteData = await getRoute(originCoords, destCoords, false);
+
+          if (!currentRouteData) {
+            showLoading(false);
+            isCalculating = false;
+            alert(
+              "❌ Could not calculate route. Please try different locations."
+            );
+            return;
+          }
+
+          if (CONFIG.ROUTE_ALTERNATIVES) {
+            showLoading(true, "Finding alternative routes...");
+            alternateRouteData = await getRoute(originCoords, destCoords, true);
+          }
+
+          showLoading(true, "Detecting toll plazas with precision...");
+          detectedTolls = await getAccurateTolls(currentRouteData.geometry);
+
+          showLoading(true, "Finding EV charging stations...");
+          if (selectedVehicle && selectedVehicle.fuelType === "electric") {
+            await findEVStations(currentRouteData.geometry.coordinates);
+          }
+
+          if (CONFIG.WEATHER_ENABLED) {
+            showLoading(true, "Checking weather conditions...");
+            updateWeatherAlerts(destination.split(",")[0]);
+          }
+
+          displayRouteComparison(
+            currentRouteData,
+            alternateRouteData,
+            detectedTolls
+          );
+          displayRoute(
+            selectedRouteType === "fastest"
+              ? currentRouteData
+              : alternateRouteData
+          );
+          calculateExpenses(
+            selectedRouteType === "fastest"
+              ? currentRouteData.distance
+              : alternateRouteData.distance
+          );
+        } catch (error) {
+          console.error("Route calculation error:", error);
+          alert("❌ Error: " + error.message);
+        } finally {
+          showLoading(false);
+          isCalculating = false;
+        }
+      }
+
+      async function geocode(address) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+              address
+            )}&countrycodes=in&limit=1`,
+            { headers: { "User-Agent": "TripMate-App/2.0" } }
+          );
+
+          const data = await response.json();
+
+          if (data.length > 0) {
+            return {
+              lat: parseFloat(data[0].lat),
+              lon: parseFloat(data[0].lon),
+            };
+          }
+
+          return null;
+        } catch (error) {
+          console.error("Geocoding error:", error);
+          return null;
+        }
+      }
+
+      async function getRoute(origin, dest, avoidTolls = false) {
+        try {
+          const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${dest.lon},${dest.lat}?overview=full&geometries=geojson&alternatives=true`;
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (data.code === "Ok" && data.routes.length > 0) {
+            let selectedRoute = data.routes[0];
+
+            if (avoidTolls && data.routes.length > 1) {
+              let minTolls = Infinity;
+              data.routes.forEach((route) => {
+                const tollCount = detectTollsOnRoute(route.geometry).length;
+                if (tollCount < minTolls) {
+                  minTolls = tollCount;
+                  selectedRoute = route;
+                }
+              });
+            }
+
+            return {
+              geometry: selectedRoute.geometry,
+              distance: selectedRoute.distance,
+              duration: selectedRoute.duration,
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error("Routing error:", error);
+          return null;
+        }
+      }
+
+      // ==================== ENHANCED TOLL DETECTION (2026 PRECISION) ====================
+      async function getAccurateTolls(routeGeometry) {
+        const coords = routeGeometry.coordinates;
+        let foundTolls = [];
+
+        // Method 1: High-precision static database filter
+        TOLL_PLAZAS.forEach((toll) => {
+          const isNearRoute = coords.some(
+            (c) =>
+              calculateDistance(toll.lat, toll.lon, c[1], c[0]) <
+              CONFIG.TOLL_THRESHOLD_KM
+          );
+          if (isNearRoute) {
+            foundTolls.push({ ...toll, source: "Database" });
+          }
+        });
+
+        // Method 2: Live OSM Overpass API fetch
+        try {
+          const lats = coords.map((c) => c[1]);
+          const lons = coords.map((c) => c[0]);
+          const bbox = `${Math.min(...lats)},${Math.min(...lons)},${Math.max(
+            ...lats
+          )},${Math.max(...lons)}`;
+
+          const query = `
+            [out:json][timeout:25];
+            (
+              node["barrier"="toll_booth"](${bbox});
+              way["barrier"="toll_booth"](${bbox});
+            );
+            out center;
+        `;
+
+          const url =
+            "https://overpass-api.de/api/interpreter?data=" +
+            encodeURIComponent(query);
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (data.elements && data.elements.length > 0) {
+            console.log(`🛣️ Found ${data.elements.length} OSM toll booths`);
+
+            data.elements.forEach((element) => {
+              const lat = element.lat || element.center?.lat;
+              const lon = element.lon || element.center?.lon;
+
+              const isOnPath = coords.some(
+                (c) =>
+                  calculateDistance(lat, lon, c[1], c[0]) <
+                  CONFIG.TOLL_THRESHOLD_KM
+              );
+
+              const alreadyAdded = foundTolls.some(
+                (t) => calculateDistance(t.lat, t.lon, lat, lon) < 0.5
+              );
+
+              if (isOnPath && !alreadyAdded) {
+                foundTolls.push({
+                  name: element.tags?.name || "Toll Plaza",
+                  lat: lat,
+                  lon: lon,
+                  highway: element.tags?.ref || "Highway",
+                  charges: {
+                    car: 100,
+                    lcv: 160,
+                    bus: 330,
+                    truck: 345,
+                    heavy: 470,
+                    oversized: 565,
+                  },
+                  source: "OpenStreetMap",
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error("OSM toll fetch error:", error);
+        }
+
+        // Sort by route order
+        return foundTolls.sort((a, b) => {
+          const aIndex = findNearestPointIndex(coords, a.lat, a.lon);
+          const bIndex = findNearestPointIndex(coords, b.lat, b.lon);
+          return aIndex - bIndex;
+        });
+      }
+
+      function detectTollsOnRoute(geometry) {
+        const routeCoords = geometry.coordinates;
+        const detectedTolls = [];
+        const PROXIMITY_KM = 5;
+
+        TOLL_PLAZAS.forEach((toll) => {
+          let minDistance = Infinity;
+
+          for (let i = 0; i < routeCoords.length; i += 10) {
+            const coord = routeCoords[i];
+            const distance = calculateDistance(
+              toll.lat,
+              toll.lon,
+              coord[1],
+              coord[0]
+            );
+
+            if (distance < minDistance) {
+              minDistance = distance;
+            }
+          }
+
+          if (minDistance <= PROXIMITY_KM) {
+            detectedTolls.push({
+              ...toll,
+              distanceFromRoute: minDistance,
+            });
+          }
+        });
+
+        return detectedTolls.sort((a, b) => {
+          const aIndex = findNearestPointIndex(routeCoords, a.lat, a.lon);
+          const bIndex = findNearestPointIndex(routeCoords, b.lat, b.lon);
+          return aIndex - bIndex;
+        });
+      }
+
+      // ==================== EV CHARGING STATIONS (2026 FEATURE) ====================
+      async function findEVStations(routeCoords) {
+        evMarkers.forEach((m) => map.removeLayer(m));
+        evMarkers = [];
+
+        // Search near start, midpoint, and end
+        const searchPoints = [
+          routeCoords[0],
+          routeCoords[Math.floor(routeCoords.length / 2)],
+          routeCoords[routeCoords.length - 1],
+        ];
+
+        for (const point of searchPoints) {
+          const query = `[out:json][timeout:15];node["amenity"="charging_station"](around:${CONFIG.EV_SEARCH_RADIUS},${point[1]},${point[0]});out 5;`;
+
+          try {
+            const response = await fetch(
+              `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(
+                query
+              )}`
+            );
+            const data = await response.json();
+
+            if (data.elements) {
+              data.elements.forEach((el) => {
+                const marker = L.marker([el.lat, el.lon], {
+                  icon: L.divIcon({
+                    className: "ev-marker",
+                    html: '<div style="background: #4CAF50; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-bolt" style="color: white; font-size: 14px;"></i></div>',
+                  }),
+                }).addTo(map);
+
+                marker.bindPopup(`
+                        <div style="color: #000;">
+                            <strong style="color: #4CAF50;">⚡ EV Charging Station</strong><br>
+                            ${el.tags?.name || "Charger"}<br>
+                            ${el.tags?.operator || ""}
+                        </div>
+                    `);
+
+                evMarkers.push(marker);
+              });
+            }
+          } catch (e) {
+            console.error("EV station fetch error:", e);
+          }
+        }
+
+        if (evMarkers.length > 0) {
+          console.log(
+            `⚡ Found ${evMarkers.length} EV charging stations along route`
+          );
+        }
+      }
+
+      // ==================== WEATHER ALERTS (2026 FEATURE) ====================
+      function updateWeatherAlerts(cityName) {
+        const banner = document.getElementById("statusText");
+        if (!banner) return;
+
+        // Simulated weather conditions (in production, use real weather API)
+        const conditions = [
+          {
+            type: "clear",
+            icon: "☀️",
+            message: "Clear conditions",
+            color: "#4CAF50",
+          },
+          {
+            type: "rain",
+            icon: "🌧️",
+            message: "Rain expected",
+            color: "#FFC107",
+          },
+          {
+            type: "fog",
+            icon: "🌫️",
+            message: "Dense fog warning",
+            color: "#FF9800",
+          },
+          {
+            type: "storm",
+            icon: "⛈️",
+            message: "Thunderstorm alert",
+            color: "#f44336",
+          },
+        ];
+
+        const currentCondition =
+          conditions[Math.floor(Math.random() * conditions.length)];
+
+        if (currentCondition.type !== "clear") {
+          const alertHtml = `
+            <div style="background: rgba(255,152,0,0.2); border-left: 4px solid ${currentCondition.color}; padding: 10px; margin-top: 10px; border-radius: 4px;">
+                <strong style="color: ${currentCondition.color};">${currentCondition.icon} WEATHER ALERT</strong><br>
+                ${currentCondition.message} in ${cityName}. Drive safely!
+            </div>
+        `;
+          banner.innerHTML += alertHtml;
+        }
+      }
+
+      // ==================== MATH UTILITIES ====================
+      function findNearestPointIndex(coords, lat, lon) {
+        let minDist = Infinity;
+        let minIndex = 0;
+
+        coords.forEach((coord, index) => {
+          const dist = calculateDistance(lat, lon, coord[1], coord[0]);
+          if (dist < minDist) {
+            minDist = dist;
+            minIndex = index;
+          }
+        });
+
+        return minIndex;
+      }
+
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+
+      // ==================== DISPLAY FUNCTIONS ====================
+      function displayRoute(route) {
+        if (routeLayer) map.removeLayer(routeLayer);
+        if (alternateRouteLayer) map.removeLayer(alternateRouteLayer);
+        markers.forEach((m) => map.removeLayer(m));
+        tollMarkers.forEach((m) => map.removeLayer(m));
+        markers = [];
+        tollMarkers = [];
+
+        const coords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
+        routeLayer = L.polyline(coords, {
+          color: "#4CAF50",
+          weight: 5,
+          opacity: 0.8,
+        }).addTo(map);
+
+        const startMarker = L.marker(coords[0], {
+          icon: L.divIcon({
+            className: "custom-marker",
+            html: '<div style="background: #4CAF50; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">A</div>',
+          }),
+        }).addTo(map);
+
+        const endMarker = L.marker(coords[coords.length - 1], {
+          icon: L.divIcon({
+            className: "custom-marker",
+            html: '<div style="background: #f44336; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">B</div>',
+          }),
+        }).addTo(map);
+
+        markers.push(startMarker, endMarker);
+
+        detectedTolls.forEach((toll) => {
+          const tollMarker = L.marker([toll.lat, toll.lon], {
+            icon: L.divIcon({
+              className: "toll-marker",
+              html: '<div style="background: #FF9800; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">₹</div>',
+            }),
+          }).addTo(map);
+
+          const vehicleType = selectedVehicle ? selectedVehicle.type : "car";
+          const tollCharge = toll.charges[vehicleType] || toll.charges.car;
+
+          tollMarker.bindPopup(`
+            <div style="color: #000; font-family: -apple-system, sans-serif;">
+                <strong style="font-size: 14px; color: #FF9800;">${
+                  toll.name
+                }</strong><br>
+                <span style="font-size: 12px; color: #666;">${
+                  toll.highway
+                }</span><br>
+                <span style="font-size: 16px; font-weight: bold; color: #000;">₹${tollCharge}</span>
+                ${
+                  toll.source
+                    ? `<br><span style="font-size: 10px; color: #999;">${toll.source}</span>`
+                    : ""
+                }
+            </div>
+        `);
+
+          tollMarkers.push(tollMarker);
+        });
+
+        map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+        displayTollList();
+
+        const distance = (route.distance / 1000).toFixed(1);
+        document.getElementById("previewDistance").textContent =
+          distance + " km";
+
+        if (detectedTolls.length === 0) {
+          document.getElementById("previewTolls").textContent = "Toll-Free ✓";
+          document.getElementById("previewTolls").style.color = "#4CAF50";
+        } else {
+          document.getElementById("previewTolls").textContent =
+            detectedTolls.length +
+            " toll" +
+            (detectedTolls.length !== 1 ? "s" : "");
+          document.getElementById("previewTolls").style.color = "#FF9800";
+        }
+      }
+
+      function displayRouteComparison(mainRoute, altRoute, tolls) {
+        const mainTollCost = calculateTollCost(tolls);
+        const altTolls = altRoute ? detectTollsOnRoute(altRoute.geometry) : [];
+        const altTollCost = calculateTollCost(altTolls);
+
+        const comparisonHtml = `
+        <div class="section-title" style="margin-top: 20px;">
+            <i class="fas fa-road"></i> ROUTE OPTIONS
+        </div>
+        <div class="route-comparison">
+            <div class="comparison-card ${
+              selectedRouteType === "fastest" ? "selected" : ""
+            }" 
+                 onclick="selectRouteType('fastest')">
+                <div class="comparison-label">FASTEST ROUTE</div>
+                <div class="comparison-value">${(
+                  mainRoute.distance / 1000
+                ).toFixed(0)} km</div>
+                <div class="comparison-sub">${Math.round(
+                  mainRoute.duration / 60
+                )} min</div>
+                ${
+                  tolls.length === 0
+                    ? '<div class="toll-free-badge">Toll-Free ✓</div>'
+                    : `<div class="toll-badge">${tolls.length} Toll${
+                        tolls.length !== 1 ? "s" : ""
+                      } • ₹${mainTollCost}</div>`
+                }
+            </div>
+            <div class="comparison-card toll-free ${
+              selectedRouteType === "toll-free" ? "selected" : ""
+            }" 
+                 onclick="selectRouteType('toll-free')" 
+                 ${!altRoute ? 'style="opacity:0.5;cursor:not-allowed;"' : ""}>
+                <div class="comparison-label">ALTERNATE ROUTE</div>
+                <div class="comparison-value">${
+                  altRoute ? (altRoute.distance / 1000).toFixed(0) : "--"
+                } km</div>
+                <div class="comparison-sub">${
+                  altRoute ? Math.round(altRoute.duration / 60) : "--"
+                } min</div>
+                ${
+                  !altRoute
+                    ? '<div class="toll-badge">N/A</div>'
+                    : altTolls.length === 0
+                    ? '<div class="toll-free-badge">Toll-Free ✓</div>'
+                    : `<div class="toll-badge">${altTolls.length} Toll${
+                        altTolls.length !== 1 ? "s" : ""
+                      } • ₹${altTollCost}</div>`
+                }
+            </div>
+        </div>
+    `;
+
+        document.getElementById("routeComparison").innerHTML = comparisonHtml;
+        document.getElementById("routeComparison").style.display = "block";
+      }
+
+      function selectRouteType(type) {
+        if (type === "toll-free" && !alternateRouteData) {
+          alert("⚠️ No alternate route available");
+          return;
+        }
+
+        selectedRouteType = type;
+        const route =
+          type === "fastest" ? currentRouteData : alternateRouteData;
+
+        detectedTolls = detectTollsOnRoute(route.geometry);
+
+        displayRoute(route);
+        calculateExpenses(route.distance);
+
+        const mainTolls =
+          type === "fastest"
+            ? detectedTolls
+            : detectTollsOnRoute(currentRouteData.geometry);
+        const altTolls =
+          type === "toll-free"
+            ? detectedTolls
+            : alternateRouteData
+            ? detectTollsOnRoute(alternateRouteData.geometry)
+            : [];
+
+        displayRouteComparison(currentRouteData, alternateRouteData, mainTolls);
+      }
+
+      function displayTollList() {
+        const vehicleType = selectedVehicle ? selectedVehicle.type : "car";
+
+        if (detectedTolls.length === 0) {
+          const tollHtml = `
+            <div class="section-title" style="margin-top: 20px;">
+                <i class="fas fa-road"></i> TOLL PLAZAS
+            </div>
+            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 20px; text-align: center;">
+                <i class="fas fa-check-circle" style="font-size: 32px; color: #4CAF50; margin-bottom: 10px;"></i>
+                <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">No Tolls Detected! 🎉</div>
+                <div style="font-size: 14px; color: rgba(255,255,255,0.6);">This route appears to be toll-free</div>
+            </div>
+        `;
+          document.getElementById("tollList").innerHTML = tollHtml;
+          document.getElementById("tollList").style.display = "block";
+          return;
+        }
+
+        const totalTollCost = calculateTollCost(detectedTolls);
+
+        const tollHtml = `
+        <div class="section-title" style="margin-top: 20px;">
+            <i class="fas fa-booth-curtain"></i> TOLL PLAZAS (${
+              detectedTolls.length
+            })
+        </div>
+        <div class="toll-list-card">
+            ${detectedTolls
+              .map((toll, index) => {
+                const charge = toll.charges[vehicleType] || toll.charges.car;
+                return `
+                    <div class="toll-item">
+                        <div>
+                            <div class="toll-name">${index + 1}. ${
+                  toll.name
+                }</div>
+                            <div class="toll-location">${toll.highway}</div>
+                        </div>
+                        <div class="toll-price">₹${charge.toFixed(0)}</div>
+                    </div>
+                `;
+              })
+              .join("")}
+            <div class="toll-item" style="background: rgba(255, 152, 0, 0.1); margin-top: 10px; padding: 15px; border-radius: 8px;">
+                <div>
+                    <div class="toll-name">Total Toll Cost</div>
+                </div>
+                <div class="toll-price" style="font-size: 20px;">₹${totalTollCost.toFixed(
+                  0
+                )}</div>
+            </div>
+        </div>
+    `;
+
+        document.getElementById("tollList").innerHTML = tollHtml;
+        document.getElementById("tollList").style.display = "block";
+      }
+
+      function calculateTollCost(tolls) {
+        if (!selectedVehicle || tolls.length === 0) return 0;
+
+        const vehicleType = selectedVehicle.type;
+        return tolls.reduce((total, toll) => {
+          return total + (toll.charges[vehicleType] || toll.charges.car);
+        }, 0);
+      }
+
+      function calculateExpenses(distance) {
+        if (!selectedVehicle) {
+          document.getElementById("expenseBreakdown").style.display = "none";
+          return;
+        }
+
+        const distanceKm = distance / 1000;
+        const fuelNeeded = distanceKm / selectedVehicle.mileage;
+        const fuelCost = fuelNeeded * selectedVehicle.fuelPrice;
+        const tollCost = calculateTollCost(detectedTolls);
+        const totalCost = fuelCost + tollCost;
+
+        document.getElementById("expenseBreakdown").innerHTML = `
+        <div class="section-title" style="margin-top: 20px;">
+            <i class="fas fa-rupee-sign"></i> EXPENSE BREAKDOWN
+        </div>
+        <div class="expense-card">
+            <div class="expense-row">
+                <span>Distance</span>
+                <span>${distanceKm.toFixed(1)} km</span>
+            </div>
+            <div class="expense-row">
+                <span>Fuel Cost</span>
+                <span>₹${fuelCost.toFixed(2)}</span>
+            </div>
+            <div class="expense-row">
+                <span>Toll Charges</span>
+                <span>₹${tollCost.toFixed(2)}</span>
+            </div>
+            <div class="expense-row">
+                <span>Fuel Needed</span>
+                <span>${fuelNeeded.toFixed(2)} ${
+          selectedVehicle.fuelType === "electric" ? "kWh" : "L"
+        }</span>
+            </div>
+            <div class="expense-row">
+                <span>Total Trip Cost</span>
+                <span>₹${totalCost.toFixed(2)}</span>
+            </div>
+        </div>
+    `;
+        document.getElementById("expenseBreakdown").style.display = "block";
+        document.getElementById("previewCost").textContent =
+          "₹" + totalCost.toFixed(0);
+      }
+
+      // ==================== VEHICLE MANAGEMENT ====================
+      function openVehicleModal() {
+        document.getElementById("vehicleModal").classList.add("active");
+        renderVehicleList();
+
+        document.getElementById("fuelType").onchange = function () {
+          autoFillFuelPrice(this.value);
+        };
+      }
+
+      async function fetchCurrentFuelPrice() {
+        const statusDiv = document.getElementById("fuelPriceStatus");
+        const priceInput = document.getElementById("fuelPrice");
+        const fuelType = document.getElementById("fuelType").value;
+
+        statusDiv.innerHTML =
+          '<span style="color: #2196F3;">⏳ Fetching current price...</span>';
+
+        const city = appConfig.detectedCity || appConfig.defaultCity;
+        const prices = await fetchFuelPrices(city);
+
+        if (prices) {
+          let price = 0;
+          switch (fuelType) {
+            case "petrol":
+              price = prices.petrol;
+              break;
+            case "diesel":
+              price = prices.diesel;
+              break;
+            case "cng":
+              price = prices.cng;
+              break;
+            case "electric":
+              price = prices.electric;
+              break;
+          }
+
+          priceInput.value = price;
+          statusDiv.innerHTML = `<span style="color: #4CAF50;">✓ ${prices.city}: ₹${price} (${prices.date})</span>`;
+
+          setTimeout(() => {
+            statusDiv.innerHTML = "Auto-fetch current fuel price for your city";
+          }, 5000);
+        } else {
+          statusDiv.innerHTML =
+            '<span style="color: #f44336;">✗ Failed to fetch price.</span>';
+
+          const defaultPrices = {
+            petrol: 105,
+            diesel: 95,
+            cng: 80,
+            electric: 8,
+          };
+          priceInput.value = defaultPrices[fuelType];
+
+          setTimeout(() => {
+            statusDiv.innerHTML = "Auto-fetch current fuel price for your city";
+          }, 3000);
+        }
+      }
+
+      async function autoFillFuelPrice(fuelType) {
+        const city = appConfig.detectedCity || appConfig.defaultCity;
+        const prices = await fetchFuelPrices(city);
+
+        if (!prices) return;
+
+        const priceInput = document.getElementById("fuelPrice");
+
+        switch (fuelType) {
+          case "petrol":
+            priceInput.value = prices.petrol;
+            break;
+          case "diesel":
+            priceInput.value = prices.diesel;
+            break;
+          case "cng":
+            priceInput.value = prices.cng;
+            break;
+          case "electric":
+            priceInput.value = prices.electric;
+            break;
+        }
+      }
+
+      function saveVehicle() {
+        const name = document.getElementById("vehicleName").value.trim();
+        const type = document.getElementById("vehicleType").value;
+        const fuelType = document.getElementById("fuelType").value;
+        const mileage = parseFloat(document.getElementById("mileage").value);
+        const fuelPrice = parseFloat(
+          document.getElementById("fuelPrice").value
+        );
+
+        if (!name) {
+          alert("Please enter vehicle name");
+          return;
+        }
+
+        if (!mileage || mileage <= 0 || mileage > 100) {
+          alert("Please enter valid mileage (1-100 km/l or km/kWh)");
+          return;
+        }
+
+        if (!fuelPrice || fuelPrice <= 0 || fuelPrice > 500) {
+          alert("Please enter valid fuel price (₹1-500 per unit)");
+          return;
+        }
+
+        const vehicle = {
+          id: Date.now(),
+          name: name,
+          type: type,
+          fuelType: fuelType,
+          mileage: mileage,
+          fuelPrice: fuelPrice,
+        };
+
+        vehicles.push(vehicle);
+        saveToStorage("vehicles", vehicles);
+
+        document.getElementById("vehicleName").value = "";
+        document.getElementById("mileage").value = "";
+        document.getElementById("fuelPrice").value = "";
+
+        renderVehicleList();
+        alert("✓ Vehicle saved successfully!");
+      }
+
+      function selectVehicle(id) {
+        selectedVehicle = vehicles.find((v) => v.id === id);
+        renderSelectedVehicle();
+        closeModal("vehicleModal");
+
+        if (currentRouteData) {
+          displayTollList();
+          calculateExpenses(
+            selectedRouteType === "fastest"
+              ? currentRouteData.distance
+              : alternateRouteData.distance
+          );
+
+          if (selectedVehicle.fuelType === "electric" && currentRouteData) {
+            findEVStations(currentRouteData.geometry.coordinates);
+          }
+        }
+      }
+
+      function deleteVehicle(id) {
+        if (confirm("Delete this vehicle?")) {
+          vehicles = vehicles.filter((v) => v.id !== id);
+          saveToStorage("vehicles", vehicles);
+          if (selectedVehicle && selectedVehicle.id === id) {
+            selectedVehicle = null;
+            renderSelectedVehicle();
+          }
+          renderVehicleList();
+        }
+      }
+
+      function renderVehicleList() {
+        const list = document.getElementById("vehicleList");
+        if (vehicles.length === 0) {
+          list.innerHTML =
+            '<p style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">No vehicles added yet</p>';
+          return;
+        }
+
+        const typeLabels = {
+          car: "Car/Jeep/Van",
+          lcv: "LCV",
+          bus: "Bus/Truck (2-axle)",
+          truck: "Heavy (3-axle)",
+          heavy: "Heavy (4-6 axle)",
+          oversized: "Oversized (7+ axle)",
+        };
+
+        list.innerHTML = vehicles
+          .map(
+            (v) => `
+        <div class="vehicle-card">
+            <div class="vehicle-info">
+                <h4>${v.name}</h4>
+                <div class="vehicle-details">
+                    ${typeLabels[v.type] || v.type} • ${v.fuelType} • ${
+              v.mileage
+            } km/${v.fuelType === "electric" ? "kWh" : "l"}
+                </div>
+            </div>
+            <div>
+                <button class="vehicle-select-btn" onclick="selectVehicle(${
+                  v.id
+                })">
+                    ${
+                      selectedVehicle && selectedVehicle.id === v.id
+                        ? "✓ Selected"
+                        : "Select"
+                    }
+                </button>
+                <button class="vehicle-select-btn" onclick="deleteVehicle(${
+                  v.id
+                })" 
+                        style="background: #f44336; margin-top: 5px;">
+                    Delete
+                </button>
+            </div>
+        </div>
+    `
+          )
+          .join("");
+      }
+
+      function renderSelectedVehicle() {
+        const container = document.getElementById("selectedVehicle");
+
+        if (!selectedVehicle) {
+          container.innerHTML = `
+            <p style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">
+                No vehicle selected. Add a vehicle to calculate costs.
+            </p>
+        `;
+          return;
+        }
+
+        const typeLabels = {
+          car: "Car/Jeep/Van",
+          lcv: "LCV",
+          bus: "Bus/Truck (2-axle)",
+          truck: "Heavy (3-axle)",
+          heavy: "Heavy (4-6 axle)",
+          oversized: "Oversized (7+ axle)",
+        };
+
+        container.innerHTML = `
+        <div class="vehicle-card">
+            <div class="vehicle-info">
+                <h4>${selectedVehicle.name}</h4>
+                <div class="vehicle-details">
+                    ${
+                      typeLabels[selectedVehicle.type] || selectedVehicle.type
+                    } • ${selectedVehicle.fuelType}<br>
+                    ${selectedVehicle.mileage} km/${
+          selectedVehicle.fuelType === "electric" ? "kWh" : "l"
+        } • 
+                    ₹${selectedVehicle.fuelPrice}/${
+          selectedVehicle.fuelType === "electric" ? "kWh" : "l"
+        }
+                </div>
+            </div>
+            <button class="vehicle-select-btn" onclick="openVehicleModal()">
+                Change
+            </button>
+        </div>
+    `;
+      }
+
+      // ==================== UI HELPERS ====================
+      function toggleSheet() {
+        const sheet = document.getElementById("bottomSheet");
+        const preview = document.getElementById("sheetPreview");
+        const content = document.getElementById("sheetContent");
+
+        sheet.classList.toggle("expanded");
+
+        if (sheet.classList.contains("expanded")) {
+          preview.style.display = "none";
+          content.style.display = "block";
+        } else {
+          preview.style.display = "block";
+          content.style.display = "none";
+        }
+      }
+
+      function centerMap() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              map.setView(
+                [position.coords.latitude, position.coords.longitude],
+                13
+              );
+            },
+            () => {
+              alert("⚠️ Could not get your location.");
+            }
+          );
+        }
+      }
+
+      function addWaypoint() {
+        const waypointId = Date.now();
+        waypoints.push({ id: waypointId, location: "" });
+        renderWaypoints();
+      }
+
+      function removeWaypoint(id) {
+        waypoints = waypoints.filter((w) => w.id !== id);
+        renderWaypoints();
+      }
+
+      function renderWaypoints() {
+        const list = document.getElementById("waypointsList");
+        list.innerHTML = waypoints
+          .map(
+            (wp, idx) => `
+        <div class="waypoint-item">
+            <div class="waypoint-number">${idx + 1}</div>
+            <input type="text" 
+                   placeholder="Stop ${idx + 1}" 
+                   value="${wp.location}"
+                   onchange="updateWaypoint(${wp.id}, this.value)"
+                   style="flex: 1; background: none; border: none; color: #fff; font-size: 15px; outline: none;">
+            <i class="fas fa-trash delete-btn" onclick="removeWaypoint(${
+              wp.id
+            })"></i>
+        </div>
+    `
+          )
+          .join("");
+      }
+
+      function updateWaypoint(id, value) {
+        const wp = waypoints.find((w) => w.id === id);
+        if (wp) wp.location = value;
+      }
+
+      function tryDemoRoute() {
+        document.getElementById("origin").value = "Delhi";
+        document.getElementById("destination").value = "Jaipur";
+        alert('Demo route loaded! Now click "Calculate Trip" button.');
+      }
+
+      function openTripsModal() {
+        document.getElementById("tripsModal").classList.add("active");
+        renderSavedTrips();
+      }
+
+      function renderSavedTrips() {
+        const list = document.getElementById("savedTripsList");
+        const trips = getFromStorage("trips") || [];
+
+        if (trips.length === 0) {
+          list.innerHTML =
+            '<p style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">No saved trips yet</p>';
+          return;
+        }
+
+        list.innerHTML = trips
+          .map(
+            (t) => `
+        <div class="route-option" onclick="loadTrip(${t.id})">
+            <div class="route-header">
+                <div class="route-name">${t.name || "Unnamed Trip"}</div>
+                <div class="route-distance">${t.distance}</div>
+            </div>
+            <div class="route-details">
+                ${t.origin} → ${t.destination}<br>
+                Cost: ₹${t.cost}
+            </div>
+        </div>
+    `
+          )
+          .join("");
+      }
+
+      function loadTrip(id) {
+        const trips = getFromStorage("trips") || [];
+        const trip = trips.find((t) => t.id === id);
+
+        if (trip) {
+          document.getElementById("origin").value = trip.origin;
+          document.getElementById("destination").value = trip.destination;
+          closeModal("tripsModal");
+          alert("Trip loaded! Click Calculate to view route.");
+        }
+      }
+
+      function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove("active");
+      }
+
+      function showLoading(show, message = "Calculating route...") {
+        const loading = document.getElementById("loading");
+        const loadingText = document.getElementById("loadingText");
+
+        if (show) {
+          loading.classList.add("active");
+          loadingText.textContent = message;
+        } else {
+          loading.classList.remove("active");
+        }
+      }
+
+      function updateStatusBanner() {
+        const statusText = document.getElementById("statusText");
+
+        if (!statusText) return;
+
+        let html = "";
+
+        if (appConfig.detectedCity) {
+          html += `📍 Your City: <strong>${appConfig.detectedCity}</strong><br>`;
+        }
+
+        if (inMemoryStorage.fuel_city) {
+          html += `💰 Fuel Prices: Petrol ₹${inMemoryStorage.petrol_price}, Diesel ₹${inMemoryStorage.diesel_price}`;
+        } else {
+          html +=
+            "✓ Auto fuel price detection enabled<br>✓ Using toll database + OSM data";
+        }
+
+        statusText.innerHTML = html;
+      }
+
+      // ==================== STORAGE ====================
+      function saveToStorage(key, data) {
+        inMemoryStorage[key] = data;
+      }
+
+      function getFromStorage(key) {
+        return inMemoryStorage[key] || null;
+      }
+
+      async function loadVehicles() {
+        const stored = getFromStorage("vehicles");
+        if (stored && stored.length > 0) {
+          vehicles = stored;
+        }
+
+        renderSelectedVehicle();
+        updateStatusBanner();
+      }
+
+      // ==================== EVENT LISTENERS ====================
+      window.addEventListener("load", () => {
+        initMap();
+      });
+
+      window.addEventListener("click", (e) => {
+        if (e.target.classList.contains("modal")) {
+          e.target.classList.remove("active");
+        }
+      });
+    </script>
+  </body>
+</html>
+        
